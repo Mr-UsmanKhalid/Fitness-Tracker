@@ -49,7 +49,7 @@ import Profile from './pages/Profile.jsx';
 import Layout from './components/layout/Layout.jsx';
 import ProtectedRoute from './routes/ProtectedRoute.jsx';
 
-import AuthDialogHost from './components/common/AuthDialogHost';
+import AuthDialogHost from './components/common/Authdialoghost.jsx';
 
 function App() {
   const dispatch = useDispatch();
