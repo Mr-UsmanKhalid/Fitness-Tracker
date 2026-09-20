@@ -5,7 +5,7 @@ import {
   closeDialog,
   getDialogSnapshot,
   subscribeDialog,
-} from '../../utils/authDialog';
+} from '../../utils/Authdialog.js';
 
 /* ------------------------------------------------------------
    Variant styling — matches the app's black + lime look.

@@ -7,7 +7,7 @@ import { loginUser } from "../../redux/slices/authSlice";
 import { useNavigate } from "react-router-dom";
 
 import BrandMark from '../../components/common/BrandMark'; 
-import { authDialog } from '../../utils/authDialog';
+import { authDialog } from '../../utils/Authdialog.js';
 
 function EyeIcon({ open }) {
   return open ? (

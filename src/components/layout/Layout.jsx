@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 import { logout } from '../../redux/slices/authSlice';
-import { authDialog } from '../../utils/authDialog';
+import { authDialog } from '../../utils/Authdialog.js';
 import BrandMark from '../common/BrandMark';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 import { ToastContainer } from '../../utils/toast';

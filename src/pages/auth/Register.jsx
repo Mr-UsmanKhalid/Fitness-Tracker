@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "../../redux/slices/authSlice";
 
 import BrandMark from '../../components/common/BrandMark'; 
-import { authDialog } from '../../utils/authDialog';
+import { authDialog } from '../../utils/Authdialog.js';
 
 function EyeIcon({ open }) {
   return open ? (
