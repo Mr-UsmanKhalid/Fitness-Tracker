@@ -1,72 +1,105 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Auth // 
-import { useDispatch, useSelector } from "react-redux";
-import { registerUser } from "../../redux/slices/authSlice";
+// Auth //
+import { useDispatch, useSelector } from 'react-redux';
+import { registerUser, clearError } from '../../redux/slices/authSlice';
 
-import BrandMark from '../../components/common/BrandMark'; 
+import BrandMark from '../../components/common/BrandMark';
 import { authDialog } from '../../utils/Authdialog.js';
-
-function EyeIcon({ open }) {
-  return open ? (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ) : (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M3 3l18 18" strokeLinecap="round" />
-      <path d="M10.6 5.2A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a15.6 15.6 0 0 1-3.4 4.3M6.6 6.6C4 8.3 2 12 2 12s3.5 7 10 7c1.4 0 2.7-.3 3.8-.8" strokeLinecap="round" />
-      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" strokeLinecap="round" />
-    </svg>
-  );
-}
+import {
+  fieldForServerMessage,
+  getPasswordChecks,
+  normalizeEmail,
+  validateRegister,
+  validateRegisterField,
+} from '../../utils/authValidation';
+import {
+  EyeIcon,
+  FieldError,
+  fieldClass,
+  labelClass,
+} from '../../components/auth/authFormUI';
 
 export default function Register() {
-
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ name: '', username: '', email: '', password: '', confirm: '' });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
 
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
+
   const handleChange = (e) => {
-  setForm((f) => ({
-    ...f,
-    [e.target.name]: e.target.value,
-  }));
-};
+    const { name, value } = e.target;
+    const next = { ...form, [name]: value };
+    setForm(next);
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+    if (error) dispatch(clearError());
 
-  if (form.password !== form.confirm) {
-    await authDialog.error({
-      title: "Passwords don't match",
-      message: 'Enter the same password in both fields.',
+    // Once a field has been visited, re-check it as the user types
+    // (and re-check "confirm" when the password changes)
+    setErrors((current) => {
+      const updated = { ...current };
+      if (touched[name] || current[name]) updated[name] = validateRegisterField(name, next);
+      if (name === 'password' && touched.confirm) {
+        updated.confirm = validateRegisterField('confirm', next);
+      }
+      return updated;
     });
-    return;
-  }
-
-  const userData = {
-    name: form.name,
-    username: form.username,
-    email: form.email,
-    password: form.password,
   };
 
-  const result = await dispatch(registerUser(userData));
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched((t) => ({ ...t, [name]: true }));
+    setErrors((current) => ({ ...current, [name]: validateRegisterField(name, form) }));
+  };
 
-  if (registerUser.fulfilled.match(result)) {
-    await authDialog.success({
-      title: 'Account created',
-      message: `${form.username} successfully registered. You can log in now.`,
-    });
-    navigate("/login");
-  }
-};
- 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const found = validateRegister(form);
+    if (Object.keys(found).length > 0) {
+      setErrors(found);
+      setTouched({ name: true, username: true, email: true, password: true, confirm: true });
+      document.getElementById(Object.keys(found)[0])?.focus();
+      return;
+    }
+
+    const userData = {
+      name: form.name.trim(),
+      username: form.username.trim().toLowerCase(),
+      email: normalizeEmail(form.email),
+      password: form.password,
+    };
+
+    const result = await dispatch(registerUser(userData));
+
+    if (registerUser.fulfilled.match(result)) {
+      await authDialog.success({
+        title: 'Account created',
+        message: `${userData.username} successfully registered. You can log in now.`,
+      });
+      navigate('/login');
+      return;
+    }
+
+    // Show server messages such as "Username already exists" under the right field
+    const message = typeof result.payload === 'string' ? result.payload : '';
+    const field = fieldForServerMessage(message);
+    if (field) {
+      setErrors((current) => ({ ...current, [field]: message }));
+      dispatch(clearError());
+      document.getElementById(field)?.focus();
+    }
+  };
+
+  const passwordChecks = getPasswordChecks(form.password);
 
   return (
     <div className="min-h-screen flex bg-bg text-ink font-display">
@@ -113,69 +146,89 @@ const handleSubmit = async (e) => {
             <h2 className="text-2xl sm:text-3xl font-semibold">Create your account</h2>
             <p className="mt-2 text-ink/60">
               Already training with us?{' '}
-              <a href="/login" className="text-ink hover:text-accent border-b border-ink/20 hover:border-accent transition-colors">
+              <a
+                href="/login"
+                className="text-ink hover:text-accent border-b border-ink/20 hover:border-accent transition-colors"
+              >
                 Log in
               </a>
             </p>
 
-            <form className="mt-9" onSubmit={handleSubmit}>
+            <form className="mt-9" onSubmit={handleSubmit} noValidate>
+              {/* Name */}
               <div className="mb-6">
-                <label htmlFor="name" className="block font-mono text-xs text-ink/40 mb-2">
+                <label htmlFor="name" className={labelClass}>
                   Name
                 </label>
                 <input
                   id="name"
                   name="name"
                   type="text"
+                  autoComplete="name"
                   placeholder="Your name"
                   value={form.name}
                   onChange={handleChange}
-                  required
-                  className="w-full bg-transparent border-0 border-b border-ink/20 focus:border-accent outline-none py-2 text-base transition-colors"
+                  onBlur={handleBlur}
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? 'name-error' : undefined}
+                  className={fieldClass(errors.name)}
                 />
+                <FieldError id="name-error" message={errors.name} />
               </div>
 
+              {/* Username */}
               <div className="mb-6">
-  <label
-    htmlFor="username"
-    className="block font-mono text-xs text-ink/40 mb-2"
-  >
-    Username
-  </label>
+                <label htmlFor="username" className={labelClass}>
+                  Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  placeholder="Choose a username"
+                  value={form.username}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  maxLength={20}
+                  aria-invalid={Boolean(errors.username)}
+                  aria-describedby={errors.username ? 'username-error' : 'username-hint'}
+                  className={fieldClass(errors.username)}
+                />
+                {errors.username ? (
+                  <FieldError id="username-error" message={errors.username} />
+                ) : (
+                  <p id="username-hint" className="mt-1.5 text-xs text-ink/40">
+                    3 to 20 characters: letters, numbers and underscores.
+                  </p>
+                )}
+              </div>
 
-  <input
-    id="username"
-    name="username"
-    type="text"
-    placeholder="Choose a username"
-    value={form.username}
-    onChange={handleChange}
-    required
-    minLength={3}
-    maxLength={20}
-    pattern="[a-zA-Z0-9_]+"
-    className="w-full bg-transparent border-0 border-b border-ink/20 focus:border-accent outline-none py-2 text-base transition-colors"
-  />
-</div>
-
+              {/* Email */}
               <div className="mb-6">
-                <label htmlFor="email" className="block font-mono text-xs text-ink/40 mb-2">
+                <label htmlFor="email" className={labelClass}>
                   Email
                 </label>
                 <input
                   id="email"
                   name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={form.email}
                   onChange={handleChange}
-                  required
-                  className="w-full bg-transparent border-0 border-b border-ink/20 focus:border-accent outline-none py-2 text-base transition-colors"
+                  onBlur={handleBlur}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
+                  className={fieldClass(errors.email)}
                 />
+                <FieldError id="email-error" message={errors.email} />
               </div>
 
+              {/* Password */}
               <div className="mb-6">
-                <label htmlFor="password" className="block font-mono text-xs text-ink/40 mb-2">
+                <label htmlFor="password" className={labelClass}>
                   Password
                 </label>
                 <div className="relative">
@@ -183,12 +236,14 @@ const handleSubmit = async (e) => {
                     id="password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     placeholder="At least 8 characters"
                     value={form.password}
                     onChange={handleChange}
-                    required
-                    minLength={8}
-                    className="w-full bg-transparent border-0 border-b border-ink/20 focus:border-accent outline-none py-2 pr-8 text-base transition-colors"
+                    onBlur={handleBlur}
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby="password-rules"
+                    className={fieldClass(errors.password, 'pr-8')}
                   />
                   <button
                     type="button"
@@ -199,47 +254,70 @@ const handleSubmit = async (e) => {
                     <EyeIcon open={showPassword} />
                   </button>
                 </div>
+
+                <ul id="password-rules" className="mt-2 space-y-1 text-xs">
+                  {passwordChecks.map((check) => (
+                    <li
+                      key={check.key}
+                      className={
+                        check.ok
+                          ? 'text-green-700'
+                          : form.password || touched.password
+                          ? 'text-red-600'
+                          : 'text-ink/40'
+                      }
+                    >
+                      <span aria-hidden="true">{check.ok ? '✓' : '○'}</span> {check.label}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
+              {/* Confirm */}
               <div className="mb-3">
-                <label htmlFor="confirm" className="block font-mono text-xs text-ink/40 mb-2">
+                <label htmlFor="confirm" className={labelClass}>
                   Confirm password
                 </label>
                 <input
                   id="confirm"
                   name="confirm"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   placeholder="Repeat your password"
                   value={form.confirm}
                   onChange={handleChange}
-                  required
-                  className="w-full bg-transparent border-0 border-b border-ink/20 focus:border-accent outline-none py-2 text-base transition-colors"
+                  onBlur={handleBlur}
+                  aria-invalid={Boolean(errors.confirm)}
+                  aria-describedby={errors.confirm ? 'confirm-error' : undefined}
+                  className={fieldClass(errors.confirm)}
                 />
+                <FieldError id="confirm-error" message={errors.confirm} />
               </div>
 
               {error && (
-                <p className="text-sm text-red-500 font-mono mt-3">
+                <p role="alert" className="text-sm text-red-500 font-mono mt-3">
                   {error}
                 </p>
               )}
 
               <p className="text-xs text-ink/40 mt-6 mb-3 leading-5">
-                By creating an account you agree to Surge's{' '}
+                By creating an account you agree to Surge&apos;s{' '}
                 <a href="/terms" className="underline hover:text-ink/70">
                   Terms
                 </a>{' '}
                 and{' '}
                 <a href="/privacy" className="underline hover:text-ink/70">
                   Privacy Policy
-                </a>.
+                </a>
+                .
               </p>
               <button
                 type="submit"
                 disabled={loading}
                 style={{ backgroundColor: '#c8ff4d' }}
-                className="w-full rounded bg-accent text-bg font-semibold py-3.5 hover:bg-[#d8ff77] transition mt-4"
+                className="w-full rounded bg-accent text-bg font-semibold py-3.5 hover:bg-[#d8ff77] transition mt-4 disabled:opacity-50"
               >
-                {loading ? "Creating account..." : "Create account"}
+                {loading ? 'Creating account...' : 'Create account'}
               </button>
             </form>
           </div>

@@ -42,14 +42,18 @@ import Notifications from './pages/Notifications.jsx';
 // Settings, Support, Profile
 import Settings from './pages/Settings.jsx';
 import Support from './pages/Support.jsx';
-import Profile from './pages/Profile.jsx';
+import Profile from './pages/Profile.jsx'; 
 
-
-
+//  Dashboard  Sidebar & Navbar
 import Layout from './components/layout/Layout.jsx';
 import ProtectedRoute from './routes/ProtectedRoute.jsx';
 
+// Dialog Box for Auth
 import AuthDialogHost from './components/common/Authdialoghost.jsx';
+
+
+// Not Found
+import NotFound from "./pages/landing/NotFound";
 
 function App() {
   const dispatch = useDispatch();
@@ -71,6 +75,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="*" element={<NotFound />} />
 
         {/* ========== PROTECTED ROUTES ========== */}
         {/* Dashboard */}
