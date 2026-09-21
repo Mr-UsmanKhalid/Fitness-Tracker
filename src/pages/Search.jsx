@@ -26,6 +26,38 @@ const inputClass =
 const resultCard =
   'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-3';
 
+/* User avatar – same logic as Layout.jsx: profile picture, falls back to initial */
+const UserAvatar = ({ user, size = 'w-8 h-8', textSize = 'text-sm' }) => {
+  const [imageError, setImageError] = useState(false);
+
+  const profilePicture = user?.profilePicture;
+  const initial = user?.name?.charAt(0)?.toUpperCase() || 'U';
+
+  // Reset the error flag when the picture URL changes
+  useEffect(() => {
+    setImageError(false);
+  }, [profilePicture]);
+
+  const showImage = profilePicture && !imageError;
+
+  return (
+    <div
+      className={`${size} ${textSize} rounded-full bg-lime-400 flex items-center justify-center text-black font-bold flex-shrink-0 overflow-hidden`}
+    >
+      {showImage ? (
+        <img
+          src={profilePicture}
+          alt={`${user?.name || 'User'} profile`}
+          className="w-full h-full object-cover"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        initial
+      )}
+    </div>
+  );
+};
+
 const Search = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -263,12 +295,10 @@ const Search = () => {
                   <div className="space-y-2">
                     {results.users.map((u) => (
                       <div key={u._id} className={`flex items-center gap-3 ${resultCard}`}>
-                        <div className="w-8 h-8 rounded-full bg-lime-400 flex items-center justify-center text-black font-bold text-sm">
-                          {u.name?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-black dark:text-white">{u.name}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{u.email}</p>
+                        <UserAvatar user={u} size="w-10 h-10" textSize="text-sm" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-black dark:text-white truncate">{u.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email}</p>
                         </div>
                       </div>
                     ))}
