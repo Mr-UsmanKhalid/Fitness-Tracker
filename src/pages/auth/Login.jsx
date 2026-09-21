@@ -13,7 +13,7 @@ import {
   FieldError,
   fieldClass,
   labelClass,
-} from '../../components/auth/authFormUI';
+} from '../auth/authFormUI.jsx';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
